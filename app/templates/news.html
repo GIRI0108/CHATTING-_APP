@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Global News</title>
+    <style>
+        .news-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 14px;
+            background: #fff;
+        }
+        img { width: 100%; border-radius: 12px; }
+    </style>
+</head>
+<body>
+
+<h2>🌍 Global News</h2>
+
+<select id="category" onchange="loadNews()">
+    <option value="general">General</option>
+    <option value="technology">Technology</option>
+    <option value="sports">Sports</option>
+    <option value="business">Business</option>
+    <option value="health">Health</option>
+    <option value="science">Science</option>
+</select>
+
+<div id="newsContainer"></div>
+
+<script>
+function loadNews(){
+    let cat = document.getElementById("category").value;
+    fetch(`/api/news?category=${cat}`)
+    .then(r => r.json())
+    .then(data => {
+        let html = "";
+        data.articles.forEach(a => {
+            html += `
+            <div class="news-card">
+                <img src="${a.urlToImage || ''}">
+                <h3>${a.title}</h3>
+                <p>${a.description || ''}</p>
+                <a href="${a.url}" target="_blank">Read More</a>
+            </div>`;
+        });
+        document.getElementById("newsContainer").innerHTML = html;
+    });
+}
+
+loadNews();
+</script>
+</body>
+</html>

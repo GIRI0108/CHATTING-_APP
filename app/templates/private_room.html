@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>ChatterBox | Private Room</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .card {
+      background: #1f1f1f;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      text-align: center;
+      width: 350px;
+    }
+    input {
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      width: 80%;
+      margin: 10px 0;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      background: #0d6efd;
+      color: white;
+      cursor: pointer;
+    }
+    #chat {
+      display: none;
+      margin-top: 20px;
+    }
+    #messages {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #2b2b2b;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔐 ChatterBox Private Room</h2>
+    <div id="setup">
+      <button id="create">Create Room</button>
+      <p>or</p>
+      <input id="keyInput" placeholder="Enter room key"/>
+      <button id="join">Join</button>
+    </div>
+    <div id="chat">
+      <h3 id="roomTitle"></h3>
+      <div id="messages"></div>
+      <input id="msg" placeholder="Type a message..."/>
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+<script>
+const socket = io({ transports: ['websocket'] });
+let roomKey = "";
+
+document.getElementById('create').onclick = async () => {
+  const res = await fetch('/create-room', { method: 'POST' });
+  const data = await res.json();
+  roomKey = data.room_key;
+  startRoom(roomKey);
+};
+
+document.getElementById('join').onclick = async () => {
+  const key = document.getElementById('keyInput').value.trim();
+  if (!key) return alert("Enter key!");
+  const res = await fetch('/join-room', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ key })
+  });
+  const data = await res.json();
+  if (data.error) return alert(data.error);
+  roomKey = data.room_key;
+  startRoom(roomKey);
+};
+
+function startRoom(key) {
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('chat').style.display = 'block';
+  document.getElementById('roomTitle').innerText = `Room Key: ${key}`;
+  socket.emit('private:join', { room_key: key });
+}
+
+document.getElementById('send').onclick = () => {
+  const msg = document.getElementById('msg').value.trim();
+  if (!msg) return;
+  socket.emit('private:message', { room_key: roomKey, message: msg });
+  document.getElementById('msg').value = '';
+};
+
+socket.on('private:message', data => {
+  const div = document.createElement('div');
+  div.innerText = `${data.user}: ${data.message}`;
+  document.getElementById('messages').appendChild(div);
+});
+
+socket.on('private:joined', data => {
+  const div = document.createElement('div');
+  div.innerHTML = `<em>${data.user} joined room.</em>`;
+  document.getElementById('messages').appendChild(div);
+});
+</script>
+</body>
+</html>

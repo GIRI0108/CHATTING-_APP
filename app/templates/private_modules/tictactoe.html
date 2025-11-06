@@ -1,0 +1,17 @@
+<!-- templates/private_modules/tictactoe.html -->
+<div style="padding:12px;color:#fff;">
+  <h3>⭕ Tic Tac Toe</h3>
+  <div id="tictactoeBoard"></div>
+  <button id="tttStart">Start</button>
+
+  <script>
+    function init_private_module_tictactoe(){
+      document.getElementById("tttStart").onclick = () => {
+        socket.emit("game:start", {conv_id, game:"tictactoe"});
+      };
+      // connect to your static js if exists
+      if (typeof init_tictactoe === "function") init_tictactoe();
+      window.addEventListener("game:update", e => { /* update UI */ });
+    }
+  </script>
+</div>

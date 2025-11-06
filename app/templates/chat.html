@@ -1,0 +1,461 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>ChatterBox - Chat with {{ other.name }}</title>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    * { box-sizing: border-box; font-family: "Poppins", sans-serif; }
+
+    body {
+      margin: 0;
+      background: #e9f5ee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .app-header {
+      background: #25d366;
+      color: white;
+      width: 100%;
+      padding: 14px;
+      font-size: 22px;
+      text-align: center;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.2);
+    }
+
+    .chat-container {
+      background: white;
+      width: 92%;
+      max-width: 750px;
+      margin-top: 20px;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      padding: 13px;
+      background: #f0fdf4;
+      border-bottom: 1px solid #dcdcdc;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    #messages {
+      height: 62vh;
+      overflow-y: auto;
+      padding: 18px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .me {
+      align-self: flex-end;
+      background: #dcf8c6;
+      padding: 10px 14px;
+      border-radius: 14px;
+      max-width: 70%;
+    }
+    .other {
+      align-self: flex-start;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 14px;
+      max-width: 70%;
+      box-shadow: 0 2px 4px rgba(0,0,0,.15);
+    }
+
+    .input-area {
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      background: #f9fafb;
+      border-top: 1px solid #e1e1e1;
+      align-items: center;
+    }
+
+    .input-area input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #cfcfcf;
+      border-radius: 8px;
+    }
+
+    .input-area button {
+      background: #25d366;
+      border: none;
+      padding: 10px 14px;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #aiFloatingBtn {
+      position: absolute;
+      bottom: 90px;
+      right: 20px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      font-size: 22px;
+      background: #25d366;
+      border: none;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+    }
+
+    /* ================================ */
+    /* ✅ FULL CALL UI WITH RINGTONE   */
+    /* ================================ */
+
+    #callUI {
+      display: none;
+      position: fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(5px);
+      justify-content:center;
+      align-items:center;
+      z-index: 5000;
+    }
+
+    .call-box {
+      background: white;
+      width: 320px;
+      padding: 25px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 8px 25px rgba(0,0,0,.2);
+    }
+
+    .call-avatar {
+      width: 90px; height: 90px;
+      background: #25d366;
+      color: white;
+      border-radius: 50%;
+      margin: auto;
+      display:flex; justify-content:center; align-items:center;
+      font-size: 42px;
+
+      animation: pulse 1.3s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow:0 0 0 0 rgba(37,211,102,.4);}
+      60%{ transform: scale(1.1); box-shadow:0 0 0 18px rgba(37,211,102,0);}
+      100% { transform: scale(1); box-shadow:0 0 0 0 rgba(37,211,102,0);}
+    }
+
+    .call-status { margin-top: 10px; font-size: 17px; color:#333; }
+    .call-timer { font-size: 20px; margin-top: 10px; display:none; }
+
+    .call-buttons {
+      display: flex;
+      justify-content:center;
+      margin-top:15px;
+      gap: 15px;
+    }
+
+    .call-btn {
+      width: 58px; height: 58px;
+      border-radius: 50%;
+      display: flex;
+      justify-content:center;
+      align-items:center;
+      font-size:24px;
+      cursor:pointer;
+      color:white;
+    }
+
+    .accept { background: #25d366; }
+    .reject { background: #ff3b30; }
+    .end { background: #ff3b30; }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <i class="fa-solid fa-comments"></i> ChatterBox
+  </div>
+
+  <!-- CHAT BOX -->
+  <div class="chat-container">
+
+    <div class="chat-header">Chat with {{ other.name }}</div>
+    <div id="messages"></div>
+
+    <!-- AI BUTTON -->
+    <button id="aiFloatingBtn">🤖</button>
+
+    <!-- INPUT SECTION -->
+    <div class="input-area">
+      <input id="msg" type="text" placeholder="Write a message...">
+      <input id="file" type="file">
+      <button id="send">Send</button>
+      <button id="call">Call</button>
+      <button id="hangup">Hang</button>
+    </div>
+  </div>
+
+  <!-- VIDEO AREA -->
+  <div>
+    <video id="localVideo" autoplay muted playsinline width="240"></video>
+    <video id="remoteVideo" autoplay playsinline width="240"></video>
+  </div>
+
+  <!-- ✅ FULL CALL UI -->
+  <div id="callUI">
+    <div class="call-box">
+      <div class="call-avatar">📞</div>
+
+      <h3 id="callName">{{ other.name }}</h3>
+      <div id="callStatus" class="call-status">Calling…</div>
+      <div id="callTimer" class="call-timer">00:00</div>
+
+      <div id="incomingBtns" class="call-buttons">
+        <div id="acceptCall" class="call-btn accept"><i class="fa-solid fa-phone"></i></div>
+        <div id="rejectCall" class="call-btn reject"><i class="fa-solid fa-phone-slash"></i></div>
+      </div>
+
+      <div id="ongoingBtns" class="call-buttons" style="display:none;">
+        <div id="endCall" class="call-btn end"><i class="fa-solid fa-phone-slash"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ RINGTONE SOUND -->
+  <audio id="ringtone" loop>
+    <source src="https://assets.mixkit.co/active_storage/sfx/1996/1996-preview.mp3" type="audio/mp3">
+  </audio>
+
+  {% include "ai_assistant.html" %}
+  <script src="/static/js/ai.js" defer></script>
+
+
+<script>
+/* ========================================================= */
+/* ✅ CHAT + SOCKET LOGIC                                    */
+/* ========================================================= */
+
+const socket = io({ transports: ["websocket"] });
+let conv_id = null;
+const other_id = {{ other.id }};
+
+socket.on("connect", () => socket.emit("start_conversation", { other_id }));
+socket.on("conversation", d => { conv_id = d.conv_id; socket.emit("join_conv", { conv_id }); });
+socket.on("history", msgs => msgs.forEach(renderMessage));
+socket.on("new_message", renderMessage);
+
+function renderMessage(m) {
+  const div = document.getElementById("messages");
+  const box = document.createElement("div");
+  box.className = (m.sender_id == {{ current_user.id }}) ? "me" : "other";
+
+  box.innerHTML = `<small>${new Date(m.timestamp).toLocaleString()}</small>
+                   <div>${m.msg_type==="file" ? `<a href="${m.file_url}" target="_blank">Download</a>` : m.content}</div>`;
+  div.appendChild(box);
+  div.scrollTop = div.scrollHeight;
+}
+
+/* SEND MESSAGE */
+document.getElementById("send").onclick = async () => {
+  const msg = document.getElementById("msg").value;
+  const file = document.getElementById("file");
+
+  if (file.files.length) {
+    const form = new FormData();
+    form.append("file", file.files[0]);
+    const r = await fetch("/upload", { method:"POST", body:form });
+    const j = await r.json();
+    if (j.url) socket.emit("send_message", { conv_id, msg_type:"file", file_url:j.url });
+    file.value = "";
+    return;
+  }
+
+  if (!msg) return;
+  socket.emit("send_message", { conv_id, content: msg });
+  document.getElementById("msg").value="";
+};
+
+/* ========================================================= */
+/* ✅ FULL CALL UI + RINGTONE + WEBRTC + SIGNALING           */
+/* ========================================================= */
+
+const callUI = document.getElementById("callUI");
+const callStatus = document.getElementById("callStatus");
+const callTimer = document.getElementById("callTimer");
+const incomingBtns = document.getElementById("incomingBtns");
+const ongoingBtns = document.getElementById("ongoingBtns");
+const ringtone = document.getElementById("ringtone");
+
+let pc = null;
+let localStream = null;
+let timerInt = null;
+
+/* Timer */
+function startTimer(){
+  let s=0;
+  callTimer.style.display="block";
+  timerInt = setInterval(()=>{ s++; callTimer.innerText = new Date(s*1000).toISOString().substr(14,5); },1000);
+}
+function stopTimer(){ clearInterval(timerInt); callTimer.style.display="none"; }
+
+/* Local stream */
+async function startLocalStream(){
+  if (!localStream){
+    localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+    document.getElementById("localVideo").srcObject = localStream;
+  }
+}
+
+/* Create PeerConnection */
+function createPeer(){
+  pc = new RTCPeerConnection({ iceServers:[{urls:"stun:stun.l.google.com:19302"}] });
+
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+
+  pc.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; };
+  pc.onicecandidate = e => { if(e.candidate) socket.emit("call:ice",{to:other_id, candidate:e.candidate}); };
+}
+
+/* ============================================ */
+/* ✅ OUTGOING CALL                              */
+/* ============================================ */
+document.getElementById("call").onclick = async () => {
+  callUI.style.display="flex";
+  incomingBtns.style.display="none";
+  ongoingBtns.style.display="none";
+  callStatus.innerText="Calling…";
+
+  ringtone.play();
+
+  socket.emit("call:request",{to:other_id, conv_id});
+
+  await startLocalStream();
+  createPeer();
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  socket.emit("call:offer",{
+    to: other_id,
+    sdp: offer.sdp,
+    conv_id
+  });
+};
+
+/* ============================================ */
+/* ✅ INCOMING CALL                              */
+/* ============================================ */
+socket.on("call:incoming", data => {
+  callUI.style.display="flex";
+  incomingBtns.style.display="flex";
+  ongoingBtns.style.display="none";
+  callStatus.innerText="Incoming Call…";
+
+  ringtone.play();
+});
+
+/* Accept */
+document.getElementById("acceptCall").onclick = async () => {
+  ringtone.pause();
+
+  callStatus.innerText="Connecting…";
+  incomingBtns.style.display="none";
+  ongoingBtns.style.display="flex";
+
+  await startLocalStream();
+  createPeer();
+
+  /* Receiver waits for offer */
+};
+
+/* Reject */
+document.getElementById("rejectCall").onclick = () => {
+  ringtone.pause();
+  callUI.style.display="none";
+  socket.emit("call:hangup",{to:other_id});
+};
+
+/* ============================================ */
+/* ✅ SIGNAL: OFFER RECEIVED                     */
+/* ============================================ */
+socket.on("call:offer", async data => {
+  if (!pc){
+    await startLocalStream();
+    createPeer();
+  }
+
+  await pc.setRemoteDescription({type:"offer", sdp:data.sdp});
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+
+  socket.emit("call:answer",{to:data.from, sdp:answer.sdp, conv_id});
+});
+
+/* ============================================ */
+/* ✅ SIGNAL: ANSWER RECEIVED                    */
+/* ============================================ */
+socket.on("call:answer", async data => {
+  ringtone.pause();
+  await pc.setRemoteDescription({type:"answer", sdp:data.sdp});
+
+  callStatus.innerText="Connected";
+  ongoingBtns.style.display="flex";
+  startTimer();
+});
+
+/* ============================================ */
+/* ✅ SIGNAL: ICE CANDIDATE                      */
+/* ============================================ */
+socket.on("call:ice", async data => {
+  if (pc) await pc.addIceCandidate(data.candidate);
+});
+
+/* ============================================ */
+/* ✅ END CALL                                   */
+/* ============================================ */
+document.getElementById("hangup").onclick =
+document.getElementById("endCall").onclick = () => {
+  ringtone.pause();
+  callUI.style.display="none";
+  endCall();
+  socket.emit("call:hangup",{to:other_id});
+};
+
+socket.on("call:hangup", () => {
+  ringtone.pause();
+  callUI.style.display="none";
+  endCall();
+});
+
+function endCall(){
+  stopTimer();
+  if(pc){ pc.close(); pc=null; }
+}
+</script>
+
+</body>
+</html>

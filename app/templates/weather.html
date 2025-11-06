@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather</title>
+    <style>
+        .card {
+            padding: 15px;
+            background: #fff;
+            border-radius: 14px;
+            margin: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+
+<h2>🌤 Weather Updates</h2>
+<button onclick="getLocation()">Get My Location Weather</button>
+
+<div id="weather"></div>
+<h3>5-Day Forecast</h3>
+<div id="forecast"></div>
+
+<script>
+function getLocation(){
+    navigator.geolocation.getCurrentPosition(pos => {
+        loadWeather(pos.coords.latitude, pos.coords.longitude);
+        loadForecast(pos.coords.latitude, pos.coords.longitude);
+    });
+}
+
+function loadWeather(lat, lon){
+    fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+    .then(r => r.json())
+    .then(w => {
+        document.getElementById("weather").innerHTML = `
+        <div class="card">
+            <h3>${w.name}</h3>
+            <p>${w.weather[0].main} - ${w.weather[0].description}</p>
+            <p>Temperature: ${w.main.temp}°C</p>
+            <p>Humidity: ${w.main.humidity}%</p>
+        </div>`;
+    });
+}
+
+function loadForecast(lat, lon){
+    fetch(`/api/forecast?lat=${lat}&lon=${lon}`)
+    .then(r => r.json())
+    .then(data => {
+        let html = "";
+        data.list.slice(0, 10).forEach(item => {
+            html += `
+            <div class="card">
+                <p>${item.dt_txt}</p>
+                <p>${item.weather[0].description}</p>
+                <p>${item.main.temp}°C</p>
+            </div>`;
+        });
+        document.getElementById("forecast").innerHTML = html;
+    });
+}
+</script>
+
+</body>
+</html>

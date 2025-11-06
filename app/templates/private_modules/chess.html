@@ -1,0 +1,39 @@
+<div style="padding:12px;color:#fff;">
+  <h3>♟️ Chess</h3>
+
+  <!-- Board container -->
+  <div id="chessBoardContainer" style="
+      display:flex;
+      justify-content:center;
+      margin-bottom:10px;
+  "></div>
+
+  <!-- Buttons -->
+  <div>
+    <button id="chessStartBtn">Start New Game</button>
+  </div>
+
+  <!-- ✅ REQUIRED CSS -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard-1.0.0.min.css">
+
+  <!-- ✅ REQUIRED JS LIBRARIES -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+  <!-- ✅ Your module logic -->
+  <script src="/static/js/chess_module_client.js"></script>
+
+  <!-- Loader called by private_room.js -->
+  <script>
+    function init_private_module_chess(){
+      console.log("♟️ Chess module loaded into Private Room");
+      if (typeof init_chess_module === "function"){
+        init_chess_module();
+      } else {
+        console.error("init_chess_module() missing!");
+      }
+    }
+  </script>
+</div>
