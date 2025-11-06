@@ -1,0 +1,12 @@
+Flask
+Flask-SocketIO
+eventlet
+Flask-Login
+Flask-SQLAlchemy
+python-dotenv
+Werkzeug
+Jinja2
+itsdangerous
+requests
+openai
+psycopg2-binary
